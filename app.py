@@ -11,6 +11,9 @@ from dotenv import load_dotenv
 import google.generativeai as genai
 from pypdf import PdfReader
 
+import time
+from collections import defaultdict
+
 # ─── Setup ─────────────────────────────────────────────────────
 load_dotenv()
 GEMINI_KEY = os.getenv("GEMINI_API_KEY") or st.secrets.get("GEMINI_API_KEY", "")
@@ -95,9 +98,26 @@ with col2:
 
 go = st.button("🔥 Roast My Resume", type="primary", use_container_width=True)
 resume_text = ""  # default value to avoid NameError
+
+# Track usage per session
+if "last_call_time" not in st.session_state:
+    st.session_state.last_call_time = 0
+    st.session_state.call_count = 0
+
 if go:
     # Debug both inputs
     # st.write(f"Debug: jd_text length = {len(jd_text)}, first 100 chars: {jd_text[:100]!r}")
+
+    # Reject too-frequent calls
+    now = time.time()
+    if now - st.session_state.last_call_time < 10:
+        st.warning("⏱️ Please wait a few seconds between requests.")
+        st.stop()
+    if st.session_state.call_count >= 10:
+        st.error("Daily limit reached. Refresh tomorrow or run locally.")
+        st.stop()
+    st.session_state.last_call_time = now
+    st.session_state.call_count += 1
 
     if not pdf_file or not jd_text.strip():
         st.warning("Please upload a resume AND paste a job description.")
